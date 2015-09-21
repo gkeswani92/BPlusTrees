@@ -18,14 +18,12 @@ public class IndexNode<K extends Comparable<K>, T> extends Node<K,T> {
 
 	public IndexNode(List<K> newKeys, List<Node<K,T>> newChildren) {
 		isLeafNode = false;
-
 		keys = new ArrayList<K>(newKeys);
 		children = new ArrayList<Node<K,T>>(newChildren);
-
 	}
 
 	/**
-	 * insert the entry into this node at the specified index so that it still
+	 * Insert the entry into this node at the specified index so that it still
 	 * remains sorted
 	 * 
 	 * @param e
@@ -34,10 +32,13 @@ public class IndexNode<K extends Comparable<K>, T> extends Node<K,T> {
 	public void insertSorted(Entry<K, Node<K,T>> e, int index) {
 		K key = e.getKey();
 		Node<K,T> child = e.getValue();
+		
 		if (index >= keys.size()) {
 			keys.add(key);
 			children.add(child);
-		} else {
+		} 
+		
+		else {
 			keys.add(index, key);
 			children.add(index+1, child);
 		}

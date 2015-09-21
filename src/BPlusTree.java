@@ -2,8 +2,10 @@ import java.util.AbstractMap;
 import java.util.Map.Entry;
 
 /**
- * BPlusTree Class Assumptions: 1. No duplicate keys inserted 2. Order D:
- * D<=number of keys in a node <=2*D 3. All keys are non-negative
+ * BPlusTree Class Assumptions: 
+ * 1. No duplicate keys inserted 
+ * 2. Order D: D<=number of keys in a node <=2*D 
+ * 3. All keys are non-negative
  * TODO: Rename to BPlusTree
  */
 public class BPlusTree<K extends Comparable<K>, T> {
@@ -28,7 +30,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @param value
 	 */
 	public void insert(K key, T value) {
-
+		//This is where the programming needs to start
 	}
 
 	/**
