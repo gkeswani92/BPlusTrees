@@ -43,5 +43,4 @@ public class IndexNode<K extends Comparable<K>, T> extends Node<K,T> {
 			children.add(index+1, child);
 		}
 	}
-
 }
