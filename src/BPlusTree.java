@@ -97,6 +97,17 @@ public class BPlusTree<K extends Comparable<K>, T> {
 					//Adding the splitting key and new right leaf to the above index node
 					currentPointer.insertSorted(slittingKeyRightLeaf, currentPointer.keys.size());
 				}
+				
+				//Checking if the latest insert on the index node caused it to overflow
+				if(currentPointer.isOverflowed()){
+					System.out.println("Index node overflowed.");
+					
+					//Splitting the index node on the splitting key and creating the new right index node
+					Entry<K, Node<K, T>> slittingKeyRightIndex = splitIndexNode(currentPointer);
+					
+					IndexNode<K,T> newIndexNode = new IndexNode<K,T>(slittingKeyRightIndex.getKey(), currentPointer, slittingKeyRightIndex.getValue());
+					root = newIndexNode;
+				}
 			}
 		}
 	}
@@ -141,7 +152,19 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 */
 	public Entry<K, Node<K,T>> splitIndexNode(IndexNode<K,T> index) { //Add params
 		
-		return null;
+		K newKey = index.keys.get(D);
+		
+		//Creating a new leaf node with the upper half of the current lead
+		List<K> rightIndexKeys = index.keys.subList(D+1, 2*D+1);
+		List<Node<K,T>> rightIndexchildren = index.children.subList(D+1, 2*D+1);
+		IndexNode<K,T> rightChild = new IndexNode<K,T>(rightIndexKeys, rightIndexchildren);
+		
+		//Dropping the keys and values of the right leaf node from the left leaf 
+		index.keys = new ArrayList<K> (index.keys.subList(0, D));
+		index.children = new ArrayList<Node<K,T>> (index.children.subList(0, D));
+		
+		//Returning the entry with the splitting key and the right child
+		return new AbstractMap.SimpleEntry<K, Node<K,T>>(newKey, rightChild);
 	
 	}
 
@@ -190,17 +213,15 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	}
 	
 	public static void main(String args[]) {
-		BPlusTree<Character, Integer> btree = new BPlusTree<Character, Integer>();
-		btree.insert('a', 1);
-		btree.insert('b', 2);
-		btree.insert('c', 7);
-		btree.insert('d', 8);
-		System.out.println(Utils.outputTree(btree));
-		btree.insert('e', 5);
-		System.out.println(Utils.outputTree(btree));
-		btree.insert('f', 3);
-		System.out.println(Utils.outputTree(btree));
-		btree.insert('g', 4);
-		System.out.println(Utils.outputTree(btree));
+		Integer primeNumbers[] = new Integer[] { 2, 4, 5, 7, 8, 9, 10, 11, 12,
+				13, 14, 15, 16 };
+		String primeNumberStrings[] = new String[primeNumbers.length];
+		for (int i = 0; i < primeNumbers.length; i++) {
+			primeNumberStrings[i] = (primeNumbers[i]).toString();
+		}
+		BPlusTree<Integer, String> tree = new BPlusTree<Integer, String>();
+		Utils.bulkInsert(tree, primeNumbers, primeNumberStrings);
+
+		System.out.print(Utils.outputTree(tree));
 	}
 }
