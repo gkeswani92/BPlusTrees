@@ -8,7 +8,7 @@ import java.util.Map.Entry;
  * 1. No duplicate keys inserted 
  * 2. Order D: D<=number of keys in a node <=2*D 
  * 3. All keys are non-negative
- * TODO: Rename to BPlusTree
+ * Rename to BPlusTree
  */
 public class BPlusTree<K extends Comparable<K>, T> {
 
@@ -16,24 +16,25 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	public static final int D = 2;
 	
 	/**
-	 * TODO Search the value for a specific key
+	 * Search the value for a specific key
 	 * 
 	 * @param key
 	 * @return value
 	 */
 	public T search(K key) {
 		
+		//If we reach a leaf node, search for the key in the node
 		if(root.isLeafNode == true) {
 			return findValueInLeafNode((LeafNode<K,T>)root, key);
 		}
 		
+		//Else traverse the tree until we reach the leaf node and then search for the key
 		else {
 			IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
 			LeafNode<K,T> leafNode = getLeafNodeGivenKey(currentPointer, key);
 			T value = findValueInLeafNode(leafNode, key);
 			return value;
 		}
-		
 	}
 	
 	/**
@@ -90,7 +91,6 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			else
 				currentPointer = (IndexNode<K, T>) currentPointer.children.get(NodeKey);
 		}
-		
 		LeafNode<K,T> leafNode = (LeafNode<K, T>) currentPointer.children.get(NodeKey);
 		return leafNode;
 	}
@@ -109,8 +109,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			root = leaf;
 		}
 		
-		//The insertion will always come to this condition once the first 
-		//key has been inserted
+		//The insertion will always come to this condition once the first key has been inserted
 		else {
 			
 			//If root is a leaf node, attempt to insert the key
@@ -139,8 +138,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				LeafNode<K,T> leafNode = getLeafNodeGivenKey( currentPointer, key);
 				leafNode.insertSorted(key, value);
 				
-				//Checking if the latest insert statement caused an overflow. If true, we need to split the node and push the 
-				//splitting key to the index node on top
+				//Checking if the latest insert statement caused an overflow. If true, we need to split the node and push the splitting key to the index node on top
 				if(leafNode.isOverflowed() == true){
 					System.out.println("Leaf node overflowed. Pushing splitting element to upper index node");
 					
@@ -198,7 +196,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 
 	
 	/**
-	 * TODO split an indexNode and return the new right node and the splitting
+	 * Split an indexNode and return the new right node and the splitting
 	 * key as an Entry<slitingKey, RightNode>
 	 * 
 	 * @param index, any other relevant data
@@ -210,16 +208,15 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		
 		//Creating a new leaf node with the upper half of the current lead
 		List<K> rightIndexKeys = index.keys.subList(D+1, 2*D+1);
-		List<Node<K,T>> rightIndexchildren = index.children.subList(D+1, 2*D+1);
+		List<Node<K,T>> rightIndexchildren = index.children.subList(D+1, index.children.size());
 		IndexNode<K,T> rightChild = new IndexNode<K,T>(rightIndexKeys, rightIndexchildren);
 		
 		//Dropping the keys and values of the right leaf node from the left leaf 
 		index.keys = new ArrayList<K> (index.keys.subList(0, D));
-		index.children = new ArrayList<Node<K,T>> (index.children.subList(0, D));
+		index.children = new ArrayList<Node<K,T>> (index.children.subList(0, D+1));
 		
 		//Returning the entry with the splitting key and the right child
 		return new AbstractMap.SimpleEntry<K, Node<K,T>>(newKey, rightChild);
-	
 	}
 
 	/**
@@ -228,9 +225,35 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @param key
 	 */
 	public void delete(K key) {
-
+		
+		//If the root is a leaf node, delete the element and exit
+		if(root.isLeafNode == true) {
+			LeafNode<K, T> leafNode = (LeafNode<K,T>)root;
+			removeKeyValueFromLeaf(leafNode, key);
+			
+		}
+		else {
+			//Find the leaf node where the would be if every rule was followed and delete key from there
+			IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
+			LeafNode<K,T> leafNode = getLeafNodeGivenKey( currentPointer, key);
+			removeKeyValueFromLeaf(leafNode, key);
+			
+			//TODO: Need to handle underflow conditions
+		}
 	}
 
+	/*
+	 * Given a leaf node and the key to be deleted, this finds the position
+	 * of the key to delete it and its corresponding value
+	 */
+	private void removeKeyValueFromLeaf(LeafNode<K,T> leaf, K key) {
+		for(int i=0; i<leaf.keys.size(); i++) 
+			if (key == leaf.keys.get(i)) {
+				leaf.keys.remove(i);
+				leaf.values.remove(i);
+			}
+	}
+	
 	/**
 	 * TODO Handle LeafNode Underflow (merge or redistribution)
 	 * 
@@ -278,7 +301,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		
 		//Searching example
 		System.out.print(Utils.outputTree(tree));
-		System.out.println(tree.search(4));
+		//System.out.println(tree.search(4));
 		
 		
 		/*BPlusTree<Integer, String> tree = new BPlusTree<Integer, String>();
