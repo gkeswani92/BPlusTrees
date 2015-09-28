@@ -8,6 +8,11 @@ public class LeafNode<K extends Comparable<K>, T> extends Node<K, T> {
 	protected LeafNode<K,T> nextLeaf; //Successor leaf node. Last will have value null
 	protected LeafNode<K,T> previousLeaf; //Predecessor leaf node. First will have value null
 
+	/**
+	 * Constructor to create a leaf node for a completely new key, value pair
+	 * @param firstKey
+	 * @param firstValue
+	 */
 	public LeafNode(K firstKey, T firstValue) {
 		isLeafNode = true;
 		keys = new ArrayList<K>();
@@ -16,6 +21,11 @@ public class LeafNode<K extends Comparable<K>, T> extends Node<K, T> {
 		values.add(firstValue);
 	}
 
+	/**
+	 * Constructor to create a leaf node when a leaf node is being split into two
+	 * @param newKeys
+	 * @param newValues
+	 */
 	public LeafNode(List<K> newKeys, List<T> newValues) {
 		isLeafNode = true;
 		keys = new ArrayList<K>(newKeys);
