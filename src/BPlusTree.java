@@ -14,7 +14,87 @@ public class BPlusTree<K extends Comparable<K>, T> {
 
 	public Node<K,T> root;
 	public static final int D = 2;
+	
+	/**
+	 * TODO Search the value for a specific key
+	 * 
+	 * @param key
+	 * @return value
+	 */
+	public T search(K key) {
+		
+		if(root.isLeafNode == true) {
+			return findValueInLeafNode((LeafNode<K,T>)root, key);
+		}
+		
+		else {
+			IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
+			LeafNode<K,T> leafNode = getLeafNodeGivenKey(currentPointer, key);
+			T value = findValueInLeafNode(leafNode, key);
+			return value;
+		}
+		
+	}
+	
+	/**
+	 * Returns the value after looking for the key in the leaf node. This method
+	 * should only be called when we know the leaf node the key will be in
+	 * @param leaf
+	 * @param key
+	 * @return
+	 * 		T
+	 */
+	private T findValueInLeafNode( LeafNode<K,T> leaf, K key ){
+		for(int i=0; i<leaf.keys.size(); i++) {
+			if (key == leaf.keys.get(i))
+				return leaf.values.get(i);
+		}
+		return null;
+	}
+	
+	/**
+	 * Given an index node and the key, it finds the leaf node where the key should.
+	 * This method can be find the leaf node to search for a key or to find the 
+	 * leaf node where the new key needs to be inserted
+	 * @param currentPointer
+	 * @param key
+	 * @return
+	 * 		LeafNode<K,T>
+	 */
+	public LeafNode<K,T> getLeafNodeGivenKey( IndexNode<K,T> currentPointer, K key) {
+		
+		Integer numKeys = currentPointer.keys.size();
+		Integer NodeKey = 0;
+		
+		//Traverse the tree until you hit a leaf node
+		while(currentPointer.isLeafNode != true) {
+			
+			//If the new key is less than the smallest key in this index node
+			if(key.compareTo(currentPointer.keys.get(0))<0) 
+				NodeKey = 0;
 
+			//If the new key is more the largest key in this index node
+			else if (key.compareTo(currentPointer.keys.get(numKeys-1))>0) 
+				NodeKey = numKeys;
+			
+			//If the pointer to the next node for this key is somewhere in the middle
+			else 
+				for(int i=1; i<numKeys-1; i++) 
+					//Finding the two keys between which this new key falls
+					if (currentPointer.keys.get(i).compareTo(key) > 1 && key.compareTo(currentPointer.keys.get(i+1)) < 1) 
+						NodeKey = i;
+			
+			//If we reach the leaf node, we break, else we case the new pointer as an index node and continue
+			if (currentPointer.children.get(NodeKey).isLeafNode == true) 
+				break;
+			else
+				currentPointer = (IndexNode<K, T>) currentPointer.children.get(NodeKey);
+		}
+		
+		LeafNode<K,T> leafNode = (LeafNode<K, T>) currentPointer.children.get(NodeKey);
+		return leafNode;
+	}
+	
 	/**
 	 * TODO Insert a key/value pair into the BPlusTree
 	 * 
@@ -53,37 +133,10 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			
 			//Insertions when root is an index node
 			else {	
-				IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
-				Integer numKeys = currentPointer.keys.size();
-				Integer leafNodeKey = 0;
 				
-				//Traverse the tree until you hit a leaf node
-				while(currentPointer.isLeafNode != true) {
-					
-					//If the new key is less than the smallest key in this index node
-					if(key.compareTo(currentPointer.keys.get(0))<0) {
-						leafNodeKey = 0;
-						break;
-					}
-					
-					//If the new key is more the largest key in this index node
-					else if (key.compareTo(currentPointer.keys.get(numKeys-1))>0) {
-						leafNodeKey = numKeys;
-						break;
-					}
-					
-					//If the pointer to the next node for this key is somewhere in the middle
-					else {
-						for(int i=1; i<numKeys-1; i++) {
-							//Finding the two keys between which this new key falls
-							if (currentPointer.keys.get(i).compareTo(key) > 1 && key.compareTo(currentPointer.keys.get(i+1)) < 1) {
-								leafNodeKey = i;
-								break;
-							}	
-						}
-					}
-				}
-				LeafNode<K,T> leafNode = (LeafNode<K, T>) currentPointer.children.get(leafNodeKey);
+				//Find the leaf node where the would be if every rule was followed and insert the key there.
+				IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
+				LeafNode<K,T> leafNode = getLeafNodeGivenKey( currentPointer, key);
 				leafNode.insertSorted(key, value);
 				
 				//Checking if the latest insert statement caused an overflow. If true, we need to split the node and push the 
@@ -99,6 +152,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				}
 				
 				//Checking if the latest insert on the index node caused it to overflow
+				//TODO: What to do with the children of the index that if pushed up
 				if(currentPointer.isOverflowed()){
 					System.out.println("Index node overflowed.");
 					
@@ -221,7 +275,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		}
 		BPlusTree<Integer, String> tree = new BPlusTree<Integer, String>();
 		Utils.bulkInsert(tree, primeNumbers, primeNumberStrings);
-
+		
+		//Searching example
 		System.out.print(Utils.outputTree(tree));
+		System.out.println(tree.search(4));
+		
+		
+		/*BPlusTree<Integer, String> tree = new BPlusTree<Integer, String>();
+		tree.insert(1, "a");
+		tree.insert(2, "b");
+		tree.insert(3, "c");
+		System.out.println(tree.search(3));*/
 	}
 }
