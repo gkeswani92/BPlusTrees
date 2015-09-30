@@ -1,3 +1,5 @@
+import static org.junit.Assert.assertEquals;
+
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +33,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		//Else traverse the tree until we reach the leaf node and then search for the key
 		else {
 			IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
-			LeafNode<K,T> leafNode = getLeafNodeGivenKey(currentPointer, key);
+			LeafNode<K,T> leafNode = getLeafNodeGivenKey(currentPointer, key).getValue();
 			T value = findValueInLeafNode(leafNode, key);
 			return value;
 		}
@@ -62,7 +64,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @return
 	 * 		LeafNode<K,T>
 	 */
-	public LeafNode<K,T> getLeafNodeGivenKey( IndexNode<K,T> currentPointer, K key) {
+	public Entry<IndexNode<K,T>, LeafNode<K,T>> getLeafNodeGivenKey( IndexNode<K,T> currentPointer, K key) {
 		
 		Integer numKeys = currentPointer.keys.size();
 		Integer NodeKey = 0;
@@ -79,9 +81,9 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				NodeKey = numKeys;
 			
 			//If the pointer to the next node for this key is somewhere in the middle
+			//Finding the two keys between which this new key falls
 			else 
 				for(int i=1; i<numKeys-1; i++) 
-					//Finding the two keys between which this new key falls
 					if (currentPointer.keys.get(i).compareTo(key) > 1 && key.compareTo(currentPointer.keys.get(i+1)) < 1) 
 						NodeKey = i;
 			
@@ -91,8 +93,9 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			else
 				currentPointer = (IndexNode<K, T>) currentPointer.children.get(NodeKey);
 		}
+		//Returning the leaf node and the immediate parent
 		LeafNode<K,T> leafNode = (LeafNode<K, T>) currentPointer.children.get(NodeKey);
-		return leafNode;
+		return new AbstractMap.SimpleEntry<IndexNode<K,T>, LeafNode<K,T>>(currentPointer, leafNode);
 	}
 	
 	/**
@@ -135,7 +138,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				
 				//Find the leaf node where the would be if every rule was followed and insert the key there.
 				IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
-				LeafNode<K,T> leafNode = getLeafNodeGivenKey( currentPointer, key);
+				LeafNode<K,T> leafNode = getLeafNodeGivenKey( currentPointer, key).getValue();
 				leafNode.insertSorted(key, value);
 				
 				//Checking if the latest insert statement caused an overflow. If true, we need to split the node and push the splitting key to the index node on top
@@ -230,15 +233,20 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		if(root.isLeafNode == true) {
 			LeafNode<K, T> leafNode = (LeafNode<K,T>)root;
 			removeKeyValueFromLeaf(leafNode, key);
-			
 		}
 		else {
-			//Find the leaf node where the would be if every rule was followed and delete key from there
+			//Find the leaf node where the key would be if every rule was followed and delete key from there
 			IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
-			LeafNode<K,T> leafNode = getLeafNodeGivenKey( currentPointer, key);
+			Entry<IndexNode<K,T>, LeafNode<K,T>> deleteLeafIndex = getLeafNodeGivenKey( currentPointer, key); 
+			LeafNode<K,T> leafNode = deleteLeafIndex.getValue();
 			removeKeyValueFromLeaf(leafNode, key);
 			
-			//TODO: Need to handle underflow conditions
+			//Checking if the latest delete caused an underflow. 
+			//If true, we need to merge siblings and bringing the index down
+			if(leafNode.isUnderflowed() == true){
+				System.out.println("Leaf node underflowed. Trying to merge/redistribute siblings");
+				int splitIndex = handleLeafNodeUnderflow(leafNode, leafNode.nextLeaf, deleteLeafIndex.getKey());
+			}
 		}
 	}
 
@@ -266,10 +274,47 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @return the splitkey position in parent if merged so that parent can
 	 *         delete the splitkey later on. -1 otherwise
 	 */
-	public int handleLeafNodeUnderflow(LeafNode<K,T> left, LeafNode<K,T> right,
-			IndexNode<K,T> parent) {
-		return -1;
+	public int handleLeafNodeUnderflow(LeafNode<K,T> left, LeafNode<K,T> right, IndexNode<K,T> parent) {
 
+		//If merging is being done
+		if(right.keys.size()<2*D) {
+			LeafNode<K, T> newLeaf = mergeLeafNodes(left, right);
+			int splittingIndex = modifyIndexAfterMerge(left, right, parent, newLeaf);
+			return splittingIndex;
+		}
+		//If redistribution is being done
+		else {
+			
+		}
+		return -1;
+	}
+
+	private int modifyIndexAfterMerge(LeafNode<K, T> left, LeafNode<K, T> right, IndexNode<K, T> parent,
+			LeafNode<K, T> newLeaf) {
+		//Removing the old leafs from the children and adding the new leaf
+		parent.children.remove(left);
+		parent.children.remove(right);
+		
+		//Removing the key since the leaves have been merged
+		int splittingIndex = parent.keys.indexOf(right.keys.get(0));
+		parent.keys.remove(splittingIndex);
+		parent.children.add(splittingIndex, newLeaf);
+		return splittingIndex;
+	}
+
+	private LeafNode<K, T> mergeLeafNodes(LeafNode<K, T> left, LeafNode<K, T> right) {
+		
+		//Merging the keys and values of the left and right leaf Node
+		ArrayList<K> keys = left.keys;
+		keys.addAll(right.keys);
+		ArrayList<T> values = left.values;
+		values.addAll(right.values);
+		
+		//Creating the new leaf and maintaining the old leaves pointers
+		LeafNode<K,T> newLeaf = new LeafNode<K,T>(keys, values);
+		newLeaf.previousLeaf = left.previousLeaf;
+		newLeaf.nextLeaf = right.nextLeaf;
+		return newLeaf;
 	}
 
 	/**
@@ -284,30 +329,8 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @return the splitkey position in parent if merged so that parent can
 	 *         delete the splitkey later on. -1 otherwise
 	 */
-	public int handleIndexNodeUnderflow(IndexNode<K,T> leftIndex,
-			IndexNode<K,T> rightIndex, IndexNode<K,T> parent) {
+	public int handleIndexNodeUnderflow(IndexNode<K,T> leftIndex, IndexNode<K,T> rightIndex, IndexNode<K,T> parent) {
 		return -1;
 	}
 	
-	public static void main(String args[]) {
-		Integer primeNumbers[] = new Integer[] { 2, 4, 5, 7, 8, 9, 10, 11, 12,
-				13, 14, 15, 16 };
-		String primeNumberStrings[] = new String[primeNumbers.length];
-		for (int i = 0; i < primeNumbers.length; i++) {
-			primeNumberStrings[i] = (primeNumbers[i]).toString();
-		}
-		BPlusTree<Integer, String> tree = new BPlusTree<Integer, String>();
-		Utils.bulkInsert(tree, primeNumbers, primeNumberStrings);
-		
-		//Searching example
-		System.out.print(Utils.outputTree(tree));
-		//System.out.println(tree.search(4));
-		
-		
-		/*BPlusTree<Integer, String> tree = new BPlusTree<Integer, String>();
-		tree.insert(1, "a");
-		tree.insert(2, "b");
-		tree.insert(3, "c");
-		System.out.println(tree.search(3));*/
-	}
 }

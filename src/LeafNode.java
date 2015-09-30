@@ -30,7 +30,6 @@ public class LeafNode<K extends Comparable<K>, T> extends Node<K, T> {
 		isLeafNode = true;
 		keys = new ArrayList<K>(newKeys);
 		values = new ArrayList<T>(newValues);
-
 	}
 
 	/**
