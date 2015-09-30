@@ -72,20 +72,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		//Traverse the tree until you hit a leaf node
 		while(currentPointer.isLeafNode != true) {
 			
-			//If the new key is less than the smallest key in this index node
-			if(key.compareTo(currentPointer.keys.get(0))<0) 
-				NodeKey = 0;
-
-			//If the new key is more the largest key in this index node
-			else if (key.compareTo(currentPointer.keys.get(numKeys-1))>0) 
-				NodeKey = numKeys;
-			
-			//If the pointer to the next node for this key is somewhere in the middle
-			//Finding the two keys between which this new key falls
-			else 
-				for(int i=1; i<numKeys-1; i++) 
-					if (currentPointer.keys.get(i).compareTo(key) > 1 && key.compareTo(currentPointer.keys.get(i+1)) < 1) 
-						NodeKey = i;
+			NodeKey = tracePathToLeafNode(currentPointer, key, numKeys, NodeKey);
 			
 			//If we reach the leaf node, we break, else we case the new pointer as an index node and continue
 			if (currentPointer.children.get(NodeKey).isLeafNode == true) 
@@ -96,6 +83,25 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		//Returning the leaf node and the immediate parent
 		LeafNode<K,T> leafNode = (LeafNode<K, T>) currentPointer.children.get(NodeKey);
 		return new AbstractMap.SimpleEntry<IndexNode<K,T>, LeafNode<K,T>>(currentPointer, leafNode);
+	}
+
+	private Integer tracePathToLeafNode(IndexNode<K, T> currentPointer, K key, Integer numKeys, Integer NodeKey) {
+		
+		//If the new key is less than the smallest key in this index node
+		if(key.compareTo(currentPointer.keys.get(0))<0) 
+			NodeKey = 0;
+
+		//If the new key is more the largest key in this index node
+		else if (key.compareTo(currentPointer.keys.get(numKeys-1))>0) 
+			NodeKey = numKeys;
+		
+		//If the pointer to the next node for this key is somewhere in the middle
+		//Finding the two keys between which this new key falls
+		else 
+			for(int i=1; i<numKeys-1; i++) 
+				if (currentPointer.keys.get(i).compareTo(key) > 1 && key.compareTo(currentPointer.keys.get(i+1)) < 1) 
+					NodeKey = i;
+		return NodeKey;
 	}
 	
 	/**
@@ -153,13 +159,10 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				}
 				
 				//Checking if the latest insert on the index node caused it to overflow
-				//TODO: What to do with the children of the index that if pushed up
+				//Splitting the index node on the splitting key and creating the new right index node
 				if(currentPointer.isOverflowed()){
 					System.out.println("Index node overflowed.");
-					
-					//Splitting the index node on the splitting key and creating the new right index node
 					Entry<K, Node<K, T>> slittingKeyRightIndex = splitIndexNode(currentPointer);
-					
 					IndexNode<K,T> newIndexNode = new IndexNode<K,T>(slittingKeyRightIndex.getKey(), currentPointer, slittingKeyRightIndex.getValue());
 					root = newIndexNode;
 				}
@@ -239,13 +242,22 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			IndexNode<K,T> currentPointer = (IndexNode<K,T>)root;
 			Entry<IndexNode<K,T>, LeafNode<K,T>> deleteLeafIndex = getLeafNodeGivenKey( currentPointer, key); 
 			LeafNode<K,T> leafNode = deleteLeafIndex.getValue();
+			IndexNode<K,T> indexNode = deleteLeafIndex.getKey();
 			removeKeyValueFromLeaf(leafNode, key);
 			
 			//Checking if the latest delete caused an underflow. 
 			//If true, we need to merge siblings and bringing the index down
 			if(leafNode.isUnderflowed() == true){
 				System.out.println("Leaf node underflowed. Trying to merge/redistribute siblings");
-				int splitIndex = handleLeafNodeUnderflow(leafNode, leafNode.nextLeaf, deleteLeafIndex.getKey());
+				int splitIndex = handleLeafNodeUnderflow(leafNode, leafNode.nextLeaf, indexNode);
+			}
+			
+			//Checking if the merging of the two leaf nodes above caused the 
+			//index node to underflow. If yes, bring an element from the higher
+			//level down to this index
+			//TODO: How to find the rightIndex and the parent of an index node?
+			if(indexNode.isUnderflowed()) {
+				//handleIndexNodeUnderflow(indexNode, IndexNode<K,T> rightIndex, IndexNode<K,T> parent);
 			}
 		}
 	}
@@ -330,6 +342,31 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 *         delete the splitkey later on. -1 otherwise
 	 */
 	public int handleIndexNodeUnderflow(IndexNode<K,T> leftIndex, IndexNode<K,T> rightIndex, IndexNode<K,T> parent) {
+		
+		//If merging is being done
+		if(rightIndex.keys.size()<2*D) {
+			
+			//Merging the keys and values of the left and right leaf Node
+			ArrayList<K> keys = leftIndex.keys;
+			keys.addAll(rightIndex.keys);
+			ArrayList<Node<K, T>> children = leftIndex.children;
+			children.addAll(rightIndex.children);
+			
+			IndexNode<K,T> newIndexNode = new IndexNode<K,T>(keys, children);
+			
+			parent.children.remove(leftIndex);
+			parent.children.remove(rightIndex);
+			
+			int splittingIndex = parent.keys.indexOf(rightIndex.keys.get(0));
+			parent.keys.remove(splittingIndex);
+			parent.children.add(splittingIndex, newIndexNode);
+			return splittingIndex;	
+		}
+		
+		//If redistribution is being done
+		else {
+			
+		}
 		return -1;
 	}
 	
