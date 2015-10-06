@@ -406,6 +406,8 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		
 		// Next leaf needs to point to the next leaf of the removed right node
 		left.nextLeaf = right.nextLeaf;
+		if(right.nextLeaf != null)
+			right.nextLeaf.previousLeaf = left;
 
 		// Removing the deleted key from the parent if it was an index key as well
 		// Otherwise removing the original key from the parent that was pointing 
