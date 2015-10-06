@@ -1,7 +1,7 @@
 import static org.junit.Assert.*;
-import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collections;
+import org.junit.Test;
 
 public class Tests {
 
@@ -16,7 +16,6 @@ public class Tests {
 		}
 		BPlusTree<Character, String> tree = new BPlusTree<Character, String>();
 		Utils.bulkInsert(tree, alphabet, alphabetStrings);
-
 		String test = Utils.outputTree(tree);
 		String correct = "@c/e/@%%[(a,a);(b,b);]#[(c,c);(d,d);]#[(e,e);(f,f);(g,g);]$%%";
 
@@ -27,14 +26,12 @@ public class Tests {
 		test = Utils.outputTree(tree);
 		correct = "@e/@%%[(b,b);(c,c);(d,d);]#[(e,e);(f,f);(g,g);]$%%";
 		assertEquals(correct, test);
-
 	}
-
+	
 	// add some nodes, see if it comes out right, delete one, see if it's right
 	@Test
 	public void testSimpleHybrid2() {
-		Integer primeNumbers[] = new Integer[] { 2, 4, 5, 7, 8, 9, 10, 11, 12,
-				13, 14, 15, 16 };
+		Integer primeNumbers[] = new Integer[] { 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
 		String primeNumberStrings[] = new String[primeNumbers.length];
 		for (int i = 0; i < primeNumbers.length; i++) {
 			primeNumberStrings[i] = (primeNumbers[i]).toString();
@@ -48,15 +45,15 @@ public class Tests {
 
 		tree.delete(2);
 		test = Utils.outputTree(tree);
-		Utils.printTree(tree);
 		correct = "@8/10/12/14/@%%[(4,4);(5,5);(7,7);]#[(8,8);(9,9);]#[(10,10);(11,11);]#[(12,12);(13,13);]#[(14,14);(15,15);(16,16);]$%%";
+		Utils.printTree(tree);
+		System.out.println(correct);
 		assertEquals(test, correct);
 	}
 
 	@Test
 	public void testBookExampleShort() {
-		Integer exampleNumbers[] = new Integer[] { 2, 3, 13, 14, 17, 19, 24, 27,
-				30, 33, 34, 38, 5, 7, 16, 20, 22, 29 };
+		Integer exampleNumbers[] = new Integer[] { 2, 3, 13, 14, 17, 19, 24, 27, 30, 33, 34, 38, 5, 7, 16, 20, 22, 29 };
 		String primeNumberStrings[] = new String[exampleNumbers.length];
 		for (int i = 0; i < exampleNumbers.length; i++) {
 			primeNumberStrings[i] = (exampleNumbers[i]).toString();
@@ -109,12 +106,10 @@ public class Tests {
 			tree.insert(numbers.get(i), numbers.get(i));
 		}
 		testTreeInvariants(tree);
-
 		assertTrue(treeDepth(tree.root) < 11);
 	}
 
-	public <K extends Comparable<K>, T> void testTreeInvariants(
-			BPlusTree<K, T> tree) {
+	public <K extends Comparable<K>, T> void testTreeInvariants(BPlusTree<K, T> tree) {
 		for (Node<K, T> child : ((IndexNode<K, T>) (tree.root)).children)
 			testNodeInvariants(child);
 	}
@@ -138,5 +133,108 @@ public class Tests {
 				maxDepth = childDepth;
 		}
 		return (1 + maxDepth);
+	}
+	
+	@Test
+	public void testIndexRedistribute() {
+
+		Integer primeNumbers[] = new Integer[] { 2, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+		String primeNumberStrings[] = new String[primeNumbers.length];
+		for (int i = 0; i < primeNumbers.length; i++) {
+			primeNumberStrings[i] = (primeNumbers[i]).toString();
+		}
+
+		BPlusTree<Integer, String> tree = new BPlusTree<Integer, String>();
+		Utils.bulkInsert(tree, primeNumbers, primeNumberStrings);
+		String test = Utils.outputTree(tree);
+		String correct = "@10/@%%@5/8/@@12/14/@%%[(2,2);(4,4);]#[(5,5);(7,7);]#[(8,8);(9,9);]$[(10,10);(11,11);]#[(12,12);(13,13);]#[(14,14);(15,15);(16,16);]$%%";
+		assertEquals(test, correct);
+		tree.delete(5);
+		test = Utils.outputTree(tree);
+		Utils.printTree(tree);
+		correct = "@8/10/12/14/@%%[(2,2);(4,4);(7,7);]#[(8,8);(9,9);]#[(10,10);(11,11);]#[(12,12);(13,13);]#[(14,14);(15,15);(16,16);]$%%";
+		assertEquals(test, correct);
+	}
+	
+	@Test
+	public void testDeleteMultipleLeafUnderflow() {
+		System.out.println("\n testSimpleHybrid");
+		Character alphabet[] = new Character[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g' };
+		String alphabetStrings[] = new String[alphabet.length];
+		for (int i = 0; i < alphabet.length; i++) {
+			alphabetStrings[i] = (alphabet[i]).toString();
+		}
+		BPlusTree<Character, String> tree = new BPlusTree<Character, String>();
+		Utils.bulkInsert(tree, alphabet, alphabetStrings);
+		String test = Utils.outputTree(tree);
+		String correct = "@c/e/@%%[(a,a);(b,b);]#[(c,c);(d,d);]#[(e,e);(f,f);(g,g);]$%%";
+		assertEquals(correct, test);
+
+		//Testing Leaf Underflow which causes leaf merging
+		tree.delete('a');
+		test = Utils.outputTree(tree);
+		correct = "@e/@%%[(b,b);(c,c);(d,d);]#[(e,e);(f,f);(g,g);]$%%";
+		assertEquals(correct, test);
+		
+		//Testing leaf underflow with merging
+		tree.delete('b');
+		tree.delete('c');
+		test = Utils.outputTree(tree);
+		correct = "@f/@%%[(d,d);(e,e);]#[(f,f);(g,g);]$%%";
+		assertEquals(correct, test);
+		
+		//Checking if the root has been made a leaf node
+		assertEquals(false, tree.root.isLeafNode);
+	}
+
+	@Test
+	public void testDeleteMultipleLeafUnderflowToRoot() {
+		System.out.println("\n testSimpleHybrid");
+		Character alphabet[] = new Character[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g' };
+		String alphabetStrings[] = new String[alphabet.length];
+		for (int i = 0; i < alphabet.length; i++) {
+			alphabetStrings[i] = (alphabet[i]).toString();
+		}
+		BPlusTree<Character, String> tree = new BPlusTree<Character, String>();
+		Utils.bulkInsert(tree, alphabet, alphabetStrings);
+		String test = Utils.outputTree(tree);
+		String correct = "@c/e/@%%[(a,a);(b,b);]#[(c,c);(d,d);]#[(e,e);(f,f);(g,g);]$%%";
+		assertEquals(correct, test);
+
+		tree.delete('a');
+		tree.delete('b');
+		tree.delete('c');
+		tree.delete('d');
+		test = Utils.outputTree(tree);
+		correct = "[(e,e);(f,f);(g,g);]$%%";
+		assertEquals(correct, test);
+		
+		//Checking if the root has been made a leaf node
+		assertEquals(true, tree.root.isLeafNode);
+	}
+	
+	//Tree's root becomes null when all elements are deleted
+	@Test
+	public void testDeleteAll() {
+		
+		Character alphabet[] = new Character[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g' };
+		String alphabetStrings[] = new String[alphabet.length];
+		for (int i = 0; i < alphabet.length; i++) {
+			alphabetStrings[i] = (alphabet[i]).toString();
+		}
+		BPlusTree<Character, String> tree = new BPlusTree<Character, String>();
+		Utils.bulkInsert(tree, alphabet, alphabetStrings);
+		String test = Utils.outputTree(tree);
+		String correct = "@c/e/@%%[(a,a);(b,b);]#[(c,c);(d,d);]#[(e,e);(f,f);(g,g);]$%%";
+		assertEquals(correct, test);
+		
+		tree.delete('a');
+		tree.delete('b');
+		tree.delete('c');
+		tree.delete('d');
+		tree.delete('e');
+		tree.delete('f');
+		tree.delete('g');
+		assertEquals(null, tree.root);
 	}
 }

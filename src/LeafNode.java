@@ -3,29 +3,19 @@ import java.util.List;
 import java.util.ListIterator;
 
 public class LeafNode<K extends Comparable<K>, T> extends Node<K, T> {
-	
-	protected ArrayList<T> values; //The value stored in the leaf node
-	protected LeafNode<K,T> nextLeaf; //Successor leaf node. Last will have value null
-	protected LeafNode<K,T> previousLeaf; //Predecessor leaf node. First will have value null
+	protected ArrayList<T> values;
+	protected LeafNode<K, T> nextLeaf;
+	protected LeafNode<K, T> previousLeaf;
 
-	/**
-	 * Constructor to create a leaf node for a completely new key, value pair
-	 * @param firstKey
-	 * @param firstValue
-	 */
 	public LeafNode(K firstKey, T firstValue) {
 		isLeafNode = true;
 		keys = new ArrayList<K>();
 		values = new ArrayList<T>();
 		keys.add(firstKey);
 		values.add(firstValue);
+
 	}
 
-	/**
-	 * Constructor to create a leaf node when a leaf node is being split into two
-	 * @param newKeys
-	 * @param newValues
-	 */
 	public LeafNode(List<K> newKeys, List<T> newValues) {
 		isLeafNode = true;
 		keys = new ArrayList<K>(newKeys);
@@ -39,18 +29,13 @@ public class LeafNode<K extends Comparable<K>, T> extends Node<K, T> {
 	 * @param value
 	 */
 	public void insertSorted(K key, T value) {
-		
 		if (key.compareTo(keys.get(0)) < 0) {
 			keys.add(0, key);
 			values.add(0, value);
-		} 
-		
-		else if (key.compareTo(keys.get(keys.size() - 1)) > 0) {
+		} else if (key.compareTo(keys.get(keys.size() - 1)) > 0) {
 			keys.add(key);
 			values.add(value);
-		} 
-		
-		else {
+		} else {
 			ListIterator<K> iterator = keys.listIterator();
 			while (iterator.hasNext()) {
 				if (iterator.next().compareTo(key) > 0) {
@@ -60,6 +45,8 @@ public class LeafNode<K extends Comparable<K>, T> extends Node<K, T> {
 					break;
 				}
 			}
+
 		}
 	}
+
 }
