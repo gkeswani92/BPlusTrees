@@ -1,6 +1,7 @@
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map.Entry;
 
 /**
@@ -147,7 +148,8 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			
 			// If there is a parent, which is obviously an index node, add to it
 			else {
-				parent.insertSorted(splittingKey, parent.keys.size() + 1);
+				int index = returnInsertionIndex(parent.keys, splittingKey.getKey());
+				parent.insertSorted(splittingKey, index);
 				splittingKey.getValue().parent = parent;
 				handleOverflow(parent);
 			}
@@ -196,7 +198,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		K newKey = index.keys.get(D);
 
 		// Creating a new leaf node with the upper half of the current lead
-		IndexNode<K, T> rightChild = new IndexNode<K, T>(index.keys.subList(D + 1, 2 * D + 1), index.children.subList(D + 1, index.children.size()));
+		IndexNode<K, T> rightChild = new IndexNode<K, T>(index.keys.subList(D + 1, index.keys.size()), index.children.subList(D + 1, index.children.size()));
 
 		// Changing the parent of the keys of this new index node to this new index node
 		for (Node<K, T> leaf : rightChild.children) 
@@ -253,12 +255,10 @@ public class BPlusTree<K extends Comparable<K>, T> {
 
 				// If the pointer has a subling previous leaf, we either merge
 				// with it or redistribute. We will not look at the right sibling at all
-				if (((LeafNode<K, T>) pointer).previousLeaf != null) {
+				if (((LeafNode<K, T>) pointer).previousLeaf != null && pointer.parent == ((LeafNode<K, T>) pointer).previousLeaf.parent) {
 					LeafNode<K, T> leftLeafNode = ((LeafNode<K, T>) pointer).previousLeaf;
-					if (leftLeafNode.parent == pointer.parent) {
-						handleLeafNodeUnderflow(leftLeafNode, ((LeafNode<K, T>) pointer), ((IndexNode<K, T>) pointer.parent), deletedKey);
-						handleUnderflow(pointer.parent, deletedKey);
-					}
+					handleLeafNodeUnderflow(leftLeafNode, ((LeafNode<K, T>) pointer), ((IndexNode<K, T>) pointer.parent), deletedKey);
+					handleUnderflow(pointer.parent, deletedKey);
 				}
 				
 				// If the pointer does not have a sibling previous leaf, we
@@ -297,7 +297,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		IndexNode<K, T> parent = (IndexNode<K, T>) pointer.parent;
 
 		// Get the left sibling if it exists, otherwise get the right sibling
-		if (parent.keys.indexOf(pointer) > 0) {
+		if (parent.children.indexOf(pointer) > 0) {
 			IndexNode<K,T> leftSibling = (IndexNode<K, T>) parent.children.get(parent.children.indexOf(pointer) - 1);
 			return new AbstractMap.SimpleEntry<String, IndexNode<K,T>>("Left", leftSibling);
 		}
@@ -370,16 +370,27 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	//TODO: Handle the case for D being different than 2
 	private K handleLeftLeafUnderflow(LeafNode<K, T> left, LeafNode<K, T> right, IndexNode<K, T> parent) {
 		
-		// Adding the first element of the right leaf to the left leaf
-		left.keys.add(right.keys.get(0));
-		left.values.add(right.values.get(0));
-
+		List<K> keys = new ArrayList<K>();
+		keys.addAll(left.keys);
+		keys.addAll(right.keys);
+		
+		List<T> values = new ArrayList<T>();
+		values.addAll(left.values);
+		values.addAll(right.values);
+		
+		//Distributing the keys into the left index, parent and right index
+		int split = keys.size()/2;
+		
 		K splittingKey = right.keys.get(0);
 		int splittingKeyIndex = parent.keys.indexOf(splittingKey);
+		
+		// Adding the first element of the right leaf to the left leaf
+		left.keys = new ArrayList<K>(keys.subList(0, split));
+		left.values = new ArrayList<T>(values.subList(0, split));
 
 		// Removing the transferred element from the right leaf
-		right.keys.remove(0);
-		right.values.remove(0);
+		right.keys = new ArrayList<K>(keys.subList(split, keys.size()));
+		right.values = new ArrayList<T>(values.subList(split, values.size()));
 
 		// Moving the new first key of the right node to the index node
 		parent.keys.remove(splittingKey);
@@ -496,5 +507,15 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		//Removing the right index node from the parent
 		parent.children.remove(rightIndex);
 		parent.keys.remove(splittingIndex);
+	}
+	
+	private int returnInsertionIndex(ArrayList<K> keys, K splittingKey) {
+		ListIterator<K> iterator = keys.listIterator();
+		while (iterator.hasNext()) {
+			if (iterator.next().compareTo(splittingKey) > 0) {
+				return iterator.previousIndex();
+			}
+		}
+		return keys.size();
 	}
 }
