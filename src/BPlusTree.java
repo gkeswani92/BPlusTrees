@@ -238,7 +238,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			
 			//If the root now has only one child, make that child the root
 			if(((IndexNode<K,T>)root).children.size() == 1)
-				root = ((IndexNode<K,T>)root).children.get(0);
+				root = ((IndexNode<K,T>)root).children.get(0);			
 		}	
 	}
 
@@ -284,6 +284,10 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				
 				handleUnderflow(pointer.parent, deletedKey);
 			}
+			
+			int index = root.keys.indexOf(deletedKey);
+			if(index != -1 && pointer.parent == root)
+				root.keys.set(index, ((IndexNode<K,T>)root).children.get(index+1).keys.get(0));
 		}
 	}
 
@@ -313,11 +317,12 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 */
 	private K removeKeyValueFromLeaf(LeafNode<K, T> leaf, K key) {
 		K deletedKey = null;
-		for (int i = 0; i < leaf.keys.size(); i++) 
-			if (key == leaf.keys.get(i)) {
+		for (int i = 0; i < leaf.keys.size(); i++) {
+			if (key.compareTo(leaf.keys.get(i)) == 0) {
 				deletedKey = leaf.keys.remove(i);
 				leaf.values.remove(i);
 			}
+		}
 		return deletedKey;
 	}
 
@@ -337,39 +342,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
 
 		// Redistribution is possible
 		if (left.keys.size() + right.keys.size() >= 2 * D) 
-			if (left.isUnderflowed()) 
-				handleLeftLeafUnderflow(left, right, parent);
-			else 
-				handleRightLeafUnderflow(left, right, parent);
+			redistributeLeafNodes(left, right, parent, deletedKey);
 		
 		//Else we merge the leaf node
 		else 
 			mergeLeafNodes(left, right, parent, deletedKey);
 	}
 
-	private K handleRightLeafUnderflow(LeafNode<K, T> left, LeafNode<K, T> right, IndexNode<K, T> parent) {
+	private K redistributeLeafNodes(LeafNode<K, T> left, LeafNode<K, T> right, IndexNode<K, T> parent, K deletedKey) {
 		
-		// Shifting element from the left leaf to the right leaf
-		int redistributeIndex = left.keys.size() - 1;
-		K splittingKey = right.keys.get(0);
-
-		// Adding the keys to the right leaf node
-		right.keys.addAll(0, left.keys.subList(redistributeIndex, left.keys.size()));
-		right.values.addAll(0, left.values.subList(redistributeIndex, left.values.size()));
-
-		// Removing the redistributed keys from the left leaf node
-		left.keys = new ArrayList<K>(left.keys.subList(0, redistributeIndex));
-		left.values = new ArrayList<T>(left.values.subList(0, redistributeIndex));
-
-		// Changing the key that is in the parent for
-		parent.keys.set(parent.keys.indexOf(splittingKey), right.keys.get(0));
-		
-		return null;
-	}
-
-	//TODO: Handle the case for D being different than 2
-	private K handleLeftLeafUnderflow(LeafNode<K, T> left, LeafNode<K, T> right, IndexNode<K, T> parent) {
-		
+		//Creating a collection of the keys and values of the left and right leaf node
 		List<K> keys = new ArrayList<K>();
 		keys.addAll(left.keys);
 		keys.addAll(right.keys);
@@ -378,24 +360,31 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		values.addAll(left.values);
 		values.addAll(right.values);
 		
-		//Distributing the keys into the left index, parent and right index
-		int split = keys.size()/2;
-		
+		//Figuring out where to split and the index that needs to be replaced
+		int split = keys.size()/2;		
 		K splittingKey = right.keys.get(0);
 		int splittingKeyIndex = parent.keys.indexOf(splittingKey);
 		
-		// Adding the first element of the right leaf to the left leaf
+		// Adding the first D elements to the left leaf node
 		left.keys = new ArrayList<K>(keys.subList(0, split));
 		left.values = new ArrayList<T>(values.subList(0, split));
 
-		// Removing the transferred element from the right leaf
+		// Adding the remaining D or D+1 elements to the right leaf node
 		right.keys = new ArrayList<K>(keys.subList(split, keys.size()));
 		right.values = new ArrayList<T>(values.subList(split, values.size()));
 
 		// Moving the new first key of the right node to the index node
-		parent.keys.remove(splittingKey);
-		parent.keys.add(splittingKeyIndex, right.keys.get(0));
-		
+		if(parent.keys.contains(deletedKey)) {
+			parent.keys.set(parent.keys.indexOf(deletedKey), right.keys.get(0));
+		}
+		else if(parent.keys.contains(splittingKey)){
+			parent.keys.remove(splittingKey);
+			parent.keys.add(splittingKeyIndex, right.keys.get(0));
+		}
+		else {
+			int index = parent.children.indexOf(left);
+			parent.keys.set(index, right.keys.get(0));
+		}
 		return null;
 	}
 
@@ -428,10 +417,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			parent.keys.remove(deletedKey);
 			return deletedKey;
 		}
-		else {
+		else if(parent.keys.contains(splittingKey)) {
 			parent.children.remove(parent.keys.indexOf(splittingKey) + 1);
 			parent.keys.remove(splittingKey);
 			return splittingKey;
+		}
+		else {
+			int index = parent.children.indexOf(left);
+			parent.children.remove(right);
+			parent.keys.remove(index);
+			return deletedKey;
 		}
 	}
 
@@ -487,6 +482,13 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		
 		rightIndex.keys = new ArrayList<K>(keys.subList(split+1, keys.size()));
 		rightIndex.children = new ArrayList<Node<K,T>>(children.subList(split+1, children.size()));
+		
+		//Making the children point to their own parents
+		for (Node<K, T> leaf : leftIndex.children) 
+			leaf.parent = leftIndex;
+		
+		for (Node<K, T> leaf : rightIndex.children) 
+			leaf.parent = rightIndex;
 		
 		//Moving the new first key of the right index to the parent
 		parent.keys.set(splittingIndex, keys.get(split));
