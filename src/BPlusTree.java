@@ -19,7 +19,9 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * Search the value for a specific key
 	 * 
 	 * @param key
+	 * 		the key being searched for in the tree
 	 * @return value
+	 * 		the corresponding value of the key
 	 */
 	public T search(K key) {
 
@@ -42,8 +44,11 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * should only be called when we know the leaf node the key will be in
 	 * 
 	 * @param leaf
+	 * 		leaf node in which we are searching for the key
 	 * @param key
+	 * 		key who's value is being searched for
 	 * @return T
+	 * 		The value corresponding to the given key in the given leaf node
 	 */
 	private T findValueInLeafNode(LeafNode<K, T> leaf, K key) {
 		for (int i = 0; i < leaf.keys.size(); i++) {
@@ -59,8 +64,11 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * find the leaf node where the new key needs to be inserted
 	 * 
 	 * @param currentPointer
+	 * 		the point from where we start checking. generally the root
 	 * @param key
+	 * 		the key we are looking for
 	 * @return LeafNode<K,T>
+	 * 		The leaf node where the key would be or should be present
 	 */
 	public LeafNode<K, T> getLeafNodeGivenKey(Node<K, T> currentPointer, K key) {
 
@@ -89,7 +97,9 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * Insert a key/value pair into the BPlusTree
 	 * 
 	 * @param key
+	 * 		the key being inserted
 	 * @param value
+	 * 		the corresponding value of the key
 	 */
 	public void insert(K key, T value) {
 
@@ -129,7 +139,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			Entry<K, Node<K,T>> splittingKey; 
 			IndexNode<K, T> parent = (IndexNode<K, T>) current.parent;
 			
-			//Splitting depending on what kind of node has been passed
+			//Splitting depending on what kind of node has been passed i.e. leaf or index
 			if (current.isLeafNode) {
 				splittingKey = splitLeafNode((LeafNode<K, T>) current);
 				current = (LeafNode<K,T>)current;
@@ -216,6 +226,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * Delete a key/value pair from this B+Tree
 	 * 
 	 * @param key
+	 * 	the key that needs to be deleted
 	 */
 	public void delete(K key) {
 
@@ -285,6 +296,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				handleUnderflow(pointer.parent, deletedKey);
 			}
 			
+			//If the key that was deleted originally is present in the root, we need to delete it
 			int index = root.keys.indexOf(deletedKey);
 			if(index != -1 && pointer.parent == root)
 				root.keys.set(index, ((IndexNode<K,T>)root).children.get(index+1).keys.get(0));
@@ -295,7 +307,9 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * Returns the index of the sibling we want to work with from the parent
 	 * 
 	 * @param pointer
+	 * 		the node who's left or right sibling needs to be found
 	 * @return
+	 * 		String saying which sibling it is and a pointer to that sibling
 	 */
 	public Entry<String, IndexNode<K, T>> getSibling(Node<K, T> pointer) {
 		IndexNode<K, T> parent = (IndexNode<K, T>) pointer.parent;
@@ -314,6 +328,13 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	/*
 	 * Given a leaf node and the key to be deleted, this finds the position of
 	 * the key to delete it and its corresponding value
+	 * @param leaf 
+	 * 		the leaf from which the key needs to be removed
+	 * @param key 
+	 * 		the key that needs to be removed
+	 * @return
+	 * 		the key that was removed if it was otherwise null
+	 * 
 	 */
 	private K removeKeyValueFromLeaf(LeafNode<K, T> leaf, K key) {
 		K deletedKey = null;
@@ -335,8 +356,6 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 *            : the bigger node
 	 * @param parent
 	 *            : their parent index node
-	 * @return the splitkey position in parent if merged so that parent can
-	 *         delete the splitkey later on. -1 otherwise
 	 */
 	public void handleLeafNodeUnderflow(LeafNode<K, T> left, LeafNode<K, T> right, IndexNode<K, T> parent, K deletedKey) {
 
@@ -349,6 +368,20 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			mergeLeafNodes(left, right, parent, deletedKey);
 	}
 
+	/**
+	 * Handle LeafNode Underflow
+	 * 
+	 * @param left
+	 *            : the left sibling
+	 * @param right
+	 *            : the right sibling
+	 * @param parent
+	 *            : their parent index node
+	 * @param deletedKey
+	 * 			  : the key that was deleted originally
+	 * @return
+	 * 			  : the key that was deleted
+	 */
 	private K redistributeLeafNodes(LeafNode<K, T> left, LeafNode<K, T> right, IndexNode<K, T> parent, K deletedKey) {
 		
 		//Creating a collection of the keys and values of the left and right leaf node
@@ -462,6 +495,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			mergeIndexNodes(leftIndex, rightIndex, parent, splittingIndex);
 	}
 
+	/**
+	 * Handle IndexNode redistribution 
+	 * 
+	 * @param left
+	 *            : the left sibling
+	 * @param right
+	 *            : the right sibling
+	 * @param parent
+	 *            : their parent index node
+	 */
 	private void redistributeIndexNodes(IndexNode<K, T> leftIndex, IndexNode<K, T> rightIndex, IndexNode<K, T> parent,
 			int splittingIndex) {
 		
@@ -494,6 +537,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		parent.keys.set(splittingIndex, keys.get(split));
 	}
 
+	/**
+	 * Handle IndexNode merging 
+	 * 
+	 * @param left
+	 *            : the left sibling
+	 * @param right
+	 *            : the right sibling
+	 * @param parent
+	 *            : their parent index node
+	 */
 	private void mergeIndexNodes(IndexNode<K, T> leftIndex, IndexNode<K, T> rightIndex, IndexNode<K, T> parent,
 			int splittingIndex) {
 		
@@ -511,6 +564,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		parent.keys.remove(splittingIndex);
 	}
 	
+	/**
+	 * Returns the index where the new index key needs to be inserted in case of redistribution
+	 * 
+	 * @param keys:
+	 * 		the keys in the index node
+	 * @param splittingKey:
+	 * 		the key that needs to be inserted
+	 * @return:
+	 * 		the index at which the splittingKey is to be inserted
+	 */
 	private int returnInsertionIndex(ArrayList<K> keys, K splittingKey) {
 		ListIterator<K> iterator = keys.listIterator();
 		while (iterator.hasNext()) {
